@@ -1,0 +1,1185 @@
+---
+title: "Two-patch determistic and stochastic models for Ebola spillover"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The numerical implementation of the two-patch deterministic and stochastic models presented in the main text of the manuscript entitled: "The theory of infectious disease spillover at ecological boundaries".  
+
+In this markdown document, we call two external functions:
+
+(1) Two_Patch_Ebola_ODE_Model.R, defining the deterministic model equations
+(2) CTMC_Ebola_V02.R, representing a single run for the stochastic simulation model
+
+```{r Load package, include=FALSE}
+library(deSolve)
+```
+################################################################################
+
+# Two-pacth model - without seasonality without movement 
+# In the following, we will run the simulation for one year
+
+################################################################################
+
+```{r ODEs, echo=FALSE}
+
+
+# calling the deterministic model from outside this markdown document
+
+source("Two_Patch_Ebola_ODE_Model.R")
+two_patch_SIR_no_seasonality <- Two_Patch_Ebola_Model
+
+
+# initial values for the state variables at time = 0
+initial_values <- c(
+  S_A = 95, I_A = 5, R_A = 0,   # Initial values for patch A
+  S_B = 995, I_B = 5, R_B = 0   # Initial values for patch B
+)
+
+# parameter values of the model 
+params <- list(
+  N_A = 100,
+  N_B = 1000,
+  mu_ = 0.02,
+  gamma_A = 12,
+  gamma_B = 12,
+  beta_A_base = 60,
+  beta_B_base = 5,
+  phi_AB_base = 0,
+  phi_BA_base = 0,
+  seasonality = 0)
+
+# simulation time
+time <- seq(0, 1, by = 0.01)
+
+# numerical solution of the model using the ode solver
+sir_values <- ode(
+  y = initial_values,
+  times = time,
+  func = two_patch_SIR_no_seasonality,
+  parms = params
+)
+
+# Print the solution
+print(sir_values)
+```
+################################################################################
+
+# Plotting the results: without seasonality without movement - one year
+
+################################################################################
+```{r ODEs, echo=FALSE}
+
+# the deterministic model data as a data frame
+
+sir_values <- as.data.frame(sir_values)
+sir_values
+
+#######################################################
+# calling the stochastic simulation model from outside this markdown document
+
+source("CTMC_Ebola_V02.R")
+
+
+# getting the stochastic simulation data for one year
+
+t_max = 1
+
+results <- CTMC_Ebola(params, t_max)
+
+######################################################
+#            Plotting results for patch A            #
+######################################################
+
+par(mfrow = c(2,2),  mai = c(0.9, 0.7, 0.4, 0.2))
+
+with(sir_values, { # determisitic model results
+
+  # plotting the time series of susceptibles:
+  plot(time, S_A, type = "l", col = "royalblue", lwd = 4.5,
+       xlab = " ", ylab = "Population size", ylim = c(0, 100),
+       cex.lab = 1.2, cex.axis = 1.2, xaxt = 'n', panel.first =   grid())
+  box()
+# adding the time series of infectious:
+  lines(time, I_A, col = "orangered", lwd = 4.5)
+# adding the time series of recovered:
+  lines(time, R_A, col = "springgreen", lwd = 4.5)})
+
+with(results, { # stochastic model results
+  
+  lines(time_, susceptible_A, type = "l", col = "blue3", lwd = 2)
+  lines(time_, infected_A, type = "l", col = "red3", lwd = 2)
+  lines(time_, recovered_A, type = "l", col = "green3", lwd = 2)
+
+
+})
+
+text(0,125, "A", xpd = NA, cex = 1.6)
+
+
+   
+title("Endemic patch", cex.main = 1.6, font.main = 1)
+
+
+#####################################################
+#            Plotting results for patch B           #
+#####################################################
+
+with(sir_values, { # deterministic model results
+
+  # plotting the time series of susceptibles:
+  plot(time, S_B, type = "l", col = "royalblue", lwd = 4.5,
+       xlab = " ", ylab = " ", ylim = c(0, 1000),
+       cex.lab = 1.2, cex.axis = 1.2, xaxt = 'n', panel.first =   grid())
+  box()
+# adding the time series of infectious:
+  lines(time, I_B, col = "orangered", lwd = 4.5)
+# adding the time series of recovered:
+  lines(time, R_B, col = "springgreen", lwd = 4.5)
+})
+
+with(results, { # stochastic model results
+  
+  lines(time_, susceptible_B, type = "l", col = "blue3", lwd = 2)
+  lines(time_, infected_B, type = "l", col = "red3", lwd = 2)
+  lines(time_, recovered_B, type = "l", col = "green3", lwd = 2)
+
+
+})
+
+text(0,1250, "B", xpd = NA, cex = 1.6)
+
+title("Settlement patch", cex.main = 1.6, font.main = 1)
+
+# adding a legend:
+legend("center", c("Susceptible", "Infected", "Recovered"),
+       col = c("royalblue", "orangered", "springgreen"), lty = 1, bty = "n", cex = 1.1, lwd = 3)
+
+
+#############################################################
+#            Plotting results for infected in patch A       #
+#############################################################
+
+with(sir_values, {  # deterministic model results 
+
+  # plotting the time series of susceptibles:
+  plot(time, I_A, col = "orangered", lwd = 4.5, type = "l",
+       xlab = "Time (years)", ylab = "Population size", ylim = c(-0.5, 60),
+       cex.lab = 1.2, cex.axis = 1.2, panel.first =   grid())
+  box()
+})
+
+with(results, { # stochastic model results
+  
+  lines(time_, infected_A, type = "l", col = "red3", lwd = 2)
+
+})
+
+text(0,75, "C", xpd = NA, cex = 1.6)
+
+#title("Endemic patch", cex.main = 1.6, font.main = 1)
+
+# adding a legend:
+
+###############################################################
+#            Plotting results for infected in patch B        #
+###############################################################
+
+with(sir_values, { # deterministic model results
+
+  # plotting the time series of susceptibles:
+  plot(time, I_B, col = "orangered", lwd = 4.5, type = "line",
+       xlab = "Time (years)", ylab = " ", ylim = c(-0.5, 7),
+       cex.lab = 1.2, cex.axis = 1.2, panel.first =   grid())
+  box()
+})
+
+with(results, { # stochastic model results
+  
+  lines(time_, infected_B, type = "l", col = "red3", lwd = 2)
+
+})
+
+text(0,9, "D", xpd = NA, cex = 1.6)
+
+# adding a legend:
+#title("Settlement patch", cex.main = 1.6, font.main = 1)
+```
+################################################################################
+
+# Two-pacth model - with seasonality with movement 
+# In the following, we will run the simulation for one year
+
+################################################################################
+
+```{r ODEs, echo=FALSE}
+
+
+# calling the deterministic model from outside this markdown document
+
+source("Two_Patch_Ebola_ODE_Model.R")
+two_patch_SIR_with_seasonality <- Two_Patch_Ebola_Model
+
+
+# initial values for the state variables at time = 0
+initial_values <- c(
+  S_A = 95, I_A = 5, R_A = 0,   # Initial values for patch A
+  S_B = 995, I_B = 5, R_B = 0   # Initial values for patch B
+)
+
+# parameter values of the model 
+params <- list(
+  N_A = 100,
+  N_B = 1000,
+  mu_ = 0.02,
+  gamma_A = 12,
+  gamma_B = 12,
+  beta_A_base = 60,
+  beta_B_base = 5,
+  phi_AB_base = 0.4,
+  phi_BA_base = 0.04,
+  seasonality = 0.5)
+
+# simulation time
+time <- seq(0, 1, by = 0.01)
+
+# numerical solution of the model using the ode solver
+sir_values <- ode(
+  y = initial_values,
+  times = time,
+  func = two_patch_SIR_with_seasonality,
+  parms = params
+)
+
+# Print the solution
+print(sir_values)
+```
+################################################################################
+
+# Plotting the results: with seasonality with movement -- one year
+
+################################################################################
+
+```{r ODEs, echo=FALSE}
+
+
+# the deterministic model data as a data frame
+
+sir_values <- as.data.frame(sir_values)
+sir_values
+
+#######################################################
+# calling the stochastic simulation model from outside this markdown document
+
+source("CTMC_Ebola_V02.R")
+
+
+# getting the stochastic simulation data for one year
+t_max = 1
+
+results <- CTMC_Ebola(params, t_max)
+
+
+######################################################
+#            Plotting results for patch A           #
+######################################################
+
+par(mfrow = c(2,2), mai = c(0.9,0.8,0.4,0.2))
+
+with(sir_values, { # deterministic model results
+
+  # plotting the time series of susceptibles:
+  plot(time, S_A, type = "l", col = "royalblue", lwd = 4.5,
+       xlab = " ", ylab = "Population size", ylim = c(0, 100),
+       cex.lab = 1.2, cex.axis = 1.2, xaxt = 'n', panel.first =   grid())
+  box()
+# adding the time series of infectious:
+  lines(time, I_A, col = "orangered", lwd = 4.5)
+# adding the time series of recovered:
+  lines(time, R_A, col = "springgreen", lwd = 4.5)
+
+})
+
+with(results, { # stochastic model results
+  
+  lines(time_, susceptible_A, type = "l", col = "blue2", lwd = 2)
+  lines(time_, infected_A, type = "l", col = "red2", lwd = 2)
+  lines(time_, recovered_A, type = "l", col = "green2", lwd = 2)
+
+
+})
+
+text(0,128, "A", xpd = NA, cex = 1.6)
+
+
+   
+title("Endemic patch", cex.main = 1.6, font.main = 1)
+
+
+#####################################################
+#            Plotting results for patch B           #
+#####################################################
+
+with(sir_values, { # deterministic model results 
+
+  # plotting the time series of susceptibles:
+  plot(time, S_B, type = "l", col = "royalblue", lwd = 4.5,
+       xlab = " ", ylab = " ", ylim = c(0, 1000),
+       cex.lab = 1.2, cex.axis = 1.2, xaxt = 'n', panel.first =   grid())
+  box()
+# adding the time series of infectious:
+  lines(time, I_B, col = "orangered", lwd = 4.5)
+# adding the time series of recovered:
+  lines(time, R_B, col = "springgreen", lwd = 4.5)
+})
+
+with(results, { # stochastic model results
+  
+  lines(time_, susceptible_B, type = "l", col = "blue2", lwd = 2)
+  lines(time_, infected_B, type = "l", col = "red2", lwd = 2)
+  lines(time_, recovered_B, type = "l", col = "green2", lwd = 2)
+
+
+})
+
+
+text(0,1290, "B", xpd = NA, cex = 1.6)
+
+title("Settlement patch", cex.main = 1.6, font.main = 1)
+
+# adding a legend:
+legend("center", c("Susceptible", "Infected", "Recovered"),
+       col = c("royalblue", "orangered", "springgreen"), lty = 1, bty = "n", cex = 1.1, lwd = 3)
+
+
+##############################################################
+#            Plotting results for infected in patch A        #
+##############################################################
+
+with(sir_values, { # deterministic model results
+
+  # plotting the time series of susceptibles:
+  plot(time, I_A, col = "orangered", lwd = 4.5, type = "l",
+       xlab = "Time (years)", ylab = "Population size", ylim = c(-0.5, 70),
+       cex.lab = 1.2, cex.axis = 1.2, panel.first =   grid())
+  box()
+})
+
+with(results, { # stochastic model results
+  
+  lines(time_, infected_A, type = "l", col = "red2", lwd = 2)
+
+})
+
+text(0,90, "C", xpd = NA, cex = 1.6)
+
+#title("Endemic patch", cex.main = 1.6, font.main = 1)
+
+# adding a legend:
+
+#############################################################
+#            Plotting results for infected in patch B       #
+#############################################################
+
+with(sir_values, { # deterministic model results
+
+  # plotting the time series of susceptibles:
+  plot(time, I_B, col = "orangered", lwd = 4.5, type = "line",
+       xlab = "Time (years)", ylab = " ", ylim = c(-0.5, 7),
+       cex.lab = 1.2, cex.axis = 1.2, panel.first =   grid())
+  box()
+})
+
+with(results, { # stochastic model results
+  
+  lines(time_, infected_B, type = "l", col = "red2", lwd = 2)
+
+})
+
+text(0,9.2, "D", xpd = NA, cex = 1.6)
+# adding a legend:
+#legend("right", c("infected"),
+ #      col = c("orangered"), lty = 1, bty = "n", cex = 1.1, lwd = 3)
+```
+####################################################################################################################
+
+# Two-pacth model - with seasonality with movement 
+# In the following, we will run the simulation for 10 years
+
+# IMPORTANT: In the stochastic model, the extinction occurs as a result of fluctuations near the time axis
+# This occurs when we run the simulation for long periods of time - more than one year
+# To avoid this extinction, we added a constant to the transmission rate in the reservoir patch 
+# A value of 15 was added in the CTMC model before we run the simulation 
+
+#####################################################################################################################
+
+```{r ODEs, echo=FALSE}
+
+
+# calling the deterministic model from outside this markdown document
+
+source("Two_Patch_Ebola_ODE_Model.R")
+two_patch_SIR_with_seasonality <- Two_Patch_Ebola_Model
+
+
+# initial values for the state variables at time = 0
+initial_values <- c(
+  S_A = 95, I_A = 5, R_A = 0,   # Initial values for patch A
+  S_B = 995, I_B = 5, R_B = 0   # Initial values for patch B
+)
+
+# parameter values of the model 
+params <- list(
+  N_A = 100,
+  N_B = 1000,
+  mu_ = 0.02,
+  gamma_A = 12,
+  gamma_B = 12,
+  beta_A_base = 60,
+  beta_B_base = 5,
+  phi_AB_base = 0.4,
+  phi_BA_base = 0.04,
+  seasonality = 0.5)
+
+# simulation time
+time <- seq(0, 10, by = 0.01)
+
+# Solve the system of differential equations
+sir_values <- ode(
+  y = initial_values,
+  times = time,
+  func = two_patch_SIR_with_seasonality,
+  parms = params
+)
+
+# Print the solution
+print(sir_values)
+
+```
+################################################################################
+
+# Plotting the results: with seasonality with movement -- 10 years
+
+################################################################################
+
+```{r ODEs, echo=FALSE}
+
+
+# the deterministic model data as a data frame
+
+sir_values <- as.data.frame(sir_values)
+sir_values
+
+#######################################################
+# calling the stochastic simulation model from outside this markdown document
+
+source("CTMC_Ebola_V02.R")
+
+
+# getting the stochastic simulation data for 10 year
+t_max = 10
+
+results <- CTMC_Ebola(params, t_max)
+
+
+######################################################
+#            Plotting results for patch A            #
+######################################################
+
+
+par(mfrow = c(2,2), mai = c(0.9,0.8,0.4,0.2))
+
+with(sir_values, { # deterministic model results
+  
+# plotting the time series of susceptibles:
+
+  plot(time, S_A, type = "l", col = "royalblue",
+       xlab = " ", ylab = "Population size", xlim = c(0, 10), ylim = c(0, 100),
+       cex.lab = 1.2, cex.axis = 1.2, lwd = 4.5, panel.first = grid())
+  box()
+# adding the time series of infectious:
+  lines(time, I_A, col = "orangered", lwd = 4.5)
+# adding the time series of recovered:
+  lines(time, R_A, col = "springgreen", lwd = 4.5)
+})
+
+
+with(results, { # stochastic model results
+  
+  lines(time_, susceptible_A, type = "l", col = "blue2", lwd = 2)
+  lines(time_, infected_A, type = "l", col = "red2", lwd = 2)
+  lines(time_, recovered_A, type = "l", col = "green2", lwd = 2)
+
+
+})
+
+text(0,117, "A", xpd = NA, cex = 1.6)
+
+title("Endemic patch", cex.main = 1.6, font.main = 1)
+# adding a legend:
+
+
+####################################################
+#            Plotting results for patch B          #
+####################################################
+
+with(sir_values, { # deterministic mode results
+  
+# plotting the time series of susceptibles:
+  plot(time, S_B, type = "l", col = "royalblue",
+       xlab = " ", ylab = " ", xlim = c(0, 10), ylim = c(0, 1000),
+       cex.lab = 1.2, cex.axis = 1.2, lwd = 4.5, panel.first = grid())
+  box()
+# adding the time series of infectious:
+  lines(time, I_B, col = "orangered", lwd = 4.5)
+# adding the time series of recovered:
+  lines(time, R_B, col = "springgreen", lwd = 4.5)
+})
+
+legend("left", c("Susceptible", "Infected", "Recovered"),
+       col = c("royalblue", "orangered", "springgreen"), lty = 1, bty = "n", cex = 1.1, lwd =3)
+
+
+with(results, { # stochastic model results
+  
+  lines(time_, susceptible_B, type = "l", col = "blue2", lwd = 2)
+  lines(time_, infected_B, type = "l", col = "red2", lwd = 2)
+  lines(time_, recovered_B, type = "l", col = "green2", lwd = 2)
+
+
+})
+
+text(0,1170, "B", xpd = NA, cex = 1.6)
+
+
+title("Settlement patch", cex.main = 1.6, font.main = 1)
+
+
+######################################################################
+# Plotting results for infected in patch A #
+######################################################################
+
+with(sir_values, { # deterministic model results
+  
+# plotting the time series of susceptibles:
+  plot(time, I_A, col = "orangered", type = "l",
+       xlab = "Time (years)", ylab = "Population size", ylim = c(0, 10), xlim=c(1,10),
+       cex.lab = 1.2, cex.axis = 1.2, lwd = 4.5, panel.first = grid())
+  box()
+})
+
+with(results, { # stochastic model results
+  
+  lines(time_, infected_A, type = "l", col = "red2", lwd = 2)
+
+})
+
+text(1,11.9, "C", xpd = NA, cex = 1.6)
+
+
+
+######################################################################
+# Plotting results for infected in patch B #
+######################################################################
+
+with(sir_values, { # determinsitic model results
+  
+# plotting the time series of susceptibles:
+  plot(time, I_B, col = "orangered", type = "l",
+       xlab = "Time (years)", ylab = " ", ylim = c(0, 5), xlim=c(1,10),
+       cex.lab = 1.2, cex.axis = 1.2, lwd = 4.5, panel.first = grid())
+  box()
+})
+
+with(results, { # stochastic model results
+  
+  lines(time_, infected_B, type = "l", col = "red2", lwd = 2)
+
+})
+
+text(1,6, "D", xpd = NA, cex = 1.6)
+
+
+```
+
+################################################################################
+
+# The effect of seasonality amplitude on the epidemic peak  
+# In the following, we will run the simulation for one year
+
+################################################################################
+```{r ODEs, echo=FALSE}
+
+# calling the deterministic model from outside this markdown document
+
+source("Two_Patch_Ebola_ODE_Model.R")
+two_patch_SIR_with_seasonality <- Two_Patch_Ebola_Model
+
+
+# initial values for the state variables at time = 0
+initial_values <- c(
+  S_A = 95, I_A = 5, R_A = 0,   # Initial values for patch A
+  S_B = 995, I_B = 5, R_B = 0   # Initial values for patch B
+)
+
+# parameter values of the model 
+params <- list(
+  N_A = 100,
+  N_B = 1000,
+  mu_ = 0.02,
+  gamma_A = 12,
+  gamma_B = 12,
+  beta_A_base = 60,
+  beta_B_base = 5,
+  phi_AB_base = 0.4,
+  phi_BA_base = 0.04,
+  seasonality = 0.5)
+
+
+# simulation time
+time <- seq(0, 1, by = 0.01)
+
+
+loop_ind <- c(1,2,3) 
+
+# Solve the system of differential equations
+
+  out_ <- list() # saving the outputs
+  
+  season_ <- c(0.1, 1, 3) # three different values of seasonality amplitude
+  
+  for (indx in loop_ind) {
+
+    params$seasonality <- season_[indx]
+
+    sir_values <- ode(
+    y = initial_values,
+    times = time,
+    func = two_patch_SIR_with_seasonality,
+    parms = params
+  )
+    out_[[indx]] <- sir_values
+  }
+
+
+# Print the solution
+#print(sir_values)
+
+```
+
+################################################################################
+
+# Plotting the results: seasonality amplitude -- one year
+
+################################################################################
+
+```{r ODEs, echo=FALSE, fig.width = 9, fig.height = 3}
+
+
+# deterministic model outputs as data frame
+
+sir_values <- as.data.frame(out_[[1]]) # the first amplitude value
+
+# calling the stochastic model from outside of this markdown document
+source("CTMC_Ebola_V02.R")
+
+
+t_max = 1
+
+params$seasonality = 0.1
+
+results <- CTMC_Ebola(params, t_max)
+
+
+
+#########################################################################
+# Plotting results for the first amplitude value
+########################################################################
+par(mfrow = c(1, 3), mai = c(1, 0.7, 0.6, 0.2))
+
+
+with(sir_values, { # deterministic model results
+  
+# plotting the time series of susceptibles:
+  plot(time, I_A, col = "orangered", type = "l",
+       xlab = "Time (years)", ylab = "Population size", ylim = c(0, 90), xlim=c(0,1), cex.lab = 1.5, cex.axis = 1.5, lwd = 4.5, panel.first = grid())
+  box()
+  lines(time, I_B, col = "red4", lwd = 4.5)
+})
+
+with(results, { # stochastic model results
+  
+  lines(time_, infected_A, type = "l", col = "orangered", lwd = 2)
+  lines(time_, infected_B, type = "l", col = "red4", lwd = 2)
+
+})
+
+text(0,105, "A", xpd = NA, cex = 2)
+text(0.5,107, expression(paste(sigma == 0.1)), xpd = NA, cex = 2)
+
+
+# adding a legend:
+legend("right", c("Endemic patch", "Settlement patch"),
+       col = c("orangered", "red4"), lty = 1, bty = "n", cex = 1.4, lwd = 3)
+
+
+
+# second amplitude value
+
+params$seasonality = 1
+
+sir_values <- as.data.frame(out_[[2]]) # deterministic model outputs
+
+# calling the stochastic model
+source("CTMC_Ebola_V02.R")
+
+
+results <- CTMC_Ebola(params, t_max)
+
+#########################################################################
+# Plotting results for the second amplitude value
+########################################################################
+
+with(sir_values, { # deterministic model results
+  
+# plotting the time series of susceptibles:
+  plot(time, I_A, col = "orangered", type = "l",
+       xlab = "Time (years)", ylab = " ", ylim = c(0, 90), xlim=c(0,1), cex.lab = 1.5, cex.axis = 1.5, lwd = 4.5, yaxt = 'n', panel.first = grid())
+  box()
+  lines(time, I_B, col = "red4", lwd = 4.5)
+})
+
+with(results, { # stochastic model results
+  
+  lines(time_, infected_A, type = "l", col = "orangered", lwd = 2)
+  lines(time_, infected_B, type = "l", col = "red4", lwd = 2)
+
+})
+
+text(0,105, "B", xpd = NA, cex = 2)
+text(0.5,107, expression(paste(sigma == 1)), xpd = NA, cex = 2)
+
+
+# third amplitude value
+
+params$seasonality = 3
+sir_values <- as.data.frame(out_[[3]])
+
+source("CTMC_Ebola_V02.R")
+
+
+results <- CTMC_Ebola(params, t_max)
+
+
+#########################################################################
+# Plotting results for the second amplitude value
+########################################################################
+
+with(sir_values, { # deterministic model resutls
+  
+# plotting the time series of susceptibles:
+  plot(time, I_A, col = "orangered", type = "l",
+       xlab = "Time (years)", ylab = " ", ylim = c(0, 90), xlim=c(0,1), cex.lab = 1.5, cex.axis = 1.5, lwd = 4.5, yaxt = 'n', panel.first = grid())
+
+  box()
+  lines(time, I_B, col = "red4", lwd = 4.5)
+})
+
+with(results, { # stochastic model results
+  
+  lines(time_, infected_A, type = "l", col = "orangered", lwd = 2)
+  lines(time_, infected_B, type = "l", col = "red4", lwd = 2)
+
+})
+
+text(0,105, "C", xpd = NA, cex = 2)
+text(0.5,107, expression(paste(sigma == 3)), xpd = NA, cex = 2)
+
+
+#dev.off()
+```
+
+
+################################################################################
+
+# The epidemic peak as a function of model parameters
+# In the following, we will run the simulation for one year
+
+################################################################################
+```{r ODEs, echo=FALSE}
+
+
+# calling the deterministic model from outside this markdown document
+
+source("Two_Patch_Ebola_ODE_Model.R")
+two_patch_SIR_with_seasonality <- Two_Patch_Ebola_Model
+
+
+# initial values for the state variables at time = 0
+initial_values <- c(
+  S_A = 95, I_A = 5, R_A = 0,   # Initial values for patch A
+  S_B = 995, I_B = 5, R_B = 0   # Initial values for patch B
+)
+
+# parameter values of the model 
+params <- list(
+  N_A = 100,
+  N_B = 1000,
+  mu_ = 0.02,
+  gamma_A = 12,
+  gamma_B = 12,
+  beta_A_base = 60,
+  beta_B_base = 5,
+  phi_AB_base = 0.4,
+  phi_BA_base = 0.04,
+  seasonality = 0.5)
+
+
+# simulation time
+time <- seq(0, 1, by = 0.01)
+
+
+# Solve the system of differential equations
+
+  out_season_A <- vector() # saving the outputs (peak vs seasonality) in patch A
+  out_season_B <- vector() # saving the outputs (peak vs seasonality) in patch A
+    
+  season_ <- seq(0.1,1, by = (1-0.1)/19) # 20 values of seasonality amplitude from 0.1 to 1
+  
+  loop_ind <- c(1:20)
+  for (indx in loop_ind) { # looping over these 20 values
+
+    params$seasonality <- season_[indx] # choosing seasonality amplitude from the list of 20 values
+
+    sir_values <- ode( 
+    y = initial_values,
+    times = time,
+    func = two_patch_SIR_with_seasonality,
+    parms = params
+  )
+    out_season_A[indx] <- with(as.data.frame(sir_values), { # calculating the peak in patch A
+    max(I_A)
+      
+      })
+    out_season_B[indx] <- with(as.data.frame(sir_values), { # calculating the peak in patch B
+    max(I_B)
+      
+      })
+  }
+
+
+  
+  ##############################################################
+  params$seasonality = 0.5 # resetting the reference value for seasonality amplitude
+  
+  out_trans_A <- vector() # saving the outputs (peak vs transmission) in patch A
+  out_trans_B <- vector() # saving the outputs (peak vs transmission) in patch B
+
+  trans_ <- seq(40,70, by = (70-40)/19) # 20 values of transmission rates from 40 to 70
+  
+  for (indx in loop_ind) {
+
+    params$beta_A_base <- trans_[indx] # choosing transmission rate value from the seq
+
+    sir_values <- ode(
+    y = initial_values,
+    times = time,
+    func = two_patch_SIR_with_seasonality,
+    parms = params
+  )
+    out_trans_A[indx] <- with(as.data.frame(sir_values), { # the peak in patch A
+    max(I_A)
+      })
+    
+    out_trans_B[indx] <- with(as.data.frame(sir_values), { # the peak in patch B
+    max(I_B)
+      })
+  }
+  
+  #####################################################################
+  params$beta_A_base = 60 # resetting the reference value for the transmission rate in patch A
+  
+  out_phi_AB_A <- vector() # saving the outputs (peak vs dispersal from A to B) in patch A
+  out_phi_AB_B <- vector() # saving the outputs (peak vs dispersal from A to B) in patch B
+
+  phi_AB <- seq(0.1,1, by = (1-0.1)/19) # 20 values of dispersal rates from patch A to B, ranging from 0.1 to 1
+  
+  for (indx in loop_ind) {
+
+    params$phi_AB_base <- phi_AB[indx] # choosing a dispersal rate value from the seq
+
+    sir_values <- ode(
+    y = initial_values,
+    times = time,
+    func = two_patch_SIR_with_seasonality,
+    parms = params
+  )
+     out_phi_AB_A[indx] <- with(as.data.frame(sir_values), { # peak in patch A
+    max(I_A)
+      })
+    
+     out_phi_AB_B[indx] <- with(as.data.frame(sir_values), { # peak in patch B
+    max(I_B)
+      })
+  }
+
+  #####################################################################
+  params$phi_AB_base = 0.4 # resetting the reference value for dispersal rate from patch A to B
+  
+  out_phi_BA_A <- vector() # saving the outputs (peak vs dispersal from B to A) in patch A
+  out_phi_BA_B <- vector() # saving the outputs (peak vs dispersal from B to A) in patch B
+
+  phi_BA <- seq(0.01,0.1, by = (0.1-0.01)/19) # 20 values of dispersal rates from patch B to A, ranging from 0.01 to 0.1
+  
+  for (indx in loop_ind) {
+
+    params$phi_BA_base <- phi_BA[indx] # choosing a dispersal rate value from the seq
+
+    sir_values <- ode(
+    y = initial_values,
+    times = time,
+    func = two_patch_SIR_with_seasonality,
+    parms = params
+  )
+     out_phi_BA_A[indx] <- with(as.data.frame(sir_values), { # the peak in patch A
+    max(I_A)
+      })
+    
+     out_phi_BA_B[indx] <- with(as.data.frame(sir_values), { # the peak in patch B
+    max(I_B)
+      })
+  }
+
+```
+
+################################################################################
+
+# The stochastic model results
+
+################################################################################
+```{r ODEs, echo=FALSE}
+
+
+# calling the stochastic model function 
+
+source("CTMC_Ebola_V02.R")
+
+
+# initial values for the state variables at time = 0
+initial_values <- c(
+  S_A = 95, I_A = 5, R_A = 0,   # Initial values for patch A
+  S_B = 995, I_B = 5, R_B = 0   # Initial values for patch B
+)
+
+# parameter values of the model 
+params <- list(
+  N_A = 100,
+  N_B = 1000,
+  mu_ = 0.02,
+  gamma_A = 12,
+  gamma_B = 12,
+  beta_A_base = 60,
+  beta_B_base = 5,
+  phi_AB_base = 0.4,
+  phi_BA_base = 0.04,
+  seasonality = 0.5)
+
+
+# maximum simulation time
+t_max <- 1
+
+
+loop_ind <- c(1:20)
+# Solve the system of differential equations
+
+  CTMC_out_season_A <- vector()
+  CTMC_out_season_B <- vector()
+    
+  CTMC_season_ <- seq(0.1,1, by = (1-0.1)/19)
+  for (indx in loop_ind) {
+
+    params$seasonality <- CTMC_season_[indx]
+
+    results <- CTMC_Ebola(params, t_max)
+    
+    CTMC_out_season_A[indx] <- with(as.data.frame(results), {
+    max(results$infected_A)
+      
+      })
+    CTMC_out_season_B[indx] <- with(as.data.frame(results), {
+    max(results$infected_B)
+      
+      })
+  }
+
+
+  
+  ##############################################################
+  params$seasonality = 0.5
+  
+  CTMC_out_trans_A <- vector()
+  CTMC_out_trans_B <- vector()
+
+  CTMC_trans_ <- seq(40,70, by = (70-40)/19)
+  for (indx in loop_ind) {
+
+    params$beta_A_base <- CTMC_trans_[indx]
+
+    results <- CTMC_Ebola(params, t_max)
+    
+    CTMC_out_trans_A[indx] <- with(as.data.frame(results), {
+    max(results$infected_A)
+      })
+    
+    CTMC_out_trans_B[indx] <- with(as.data.frame(results), {
+    max(results$infected_B)
+      })
+  }
+  
+  #####################################################################
+  params$beta_A_base = 60
+  
+  CTMC_out_phi_AB_A <- vector()
+  CTMC_out_phi_AB_B <- vector()
+
+  CTMC_phi_AB <- seq(0.1,1, by = (1-0.1)/19)
+  
+  for (indx in loop_ind) {
+
+    params$phi_AB_base <- CTMC_phi_AB[indx]
+
+    results <- CTMC_Ebola(params, t_max)
+    
+     CTMC_out_phi_AB_A[indx] <- with(as.data.frame(results), {
+    max(results$recovered_A)
+      })
+    
+     CTMC_out_phi_AB_B[indx] <- with(as.data.frame(results), {
+    max(results$infected_B)
+      })
+  }
+
+  #####################################################################
+  params$phi_AB_base = 0.4
+  
+  CTMC_out_phi_BA_A <- vector()
+  CTMC_out_phi_BA_B <- vector()
+
+  CTMC_phi_BA <- seq(0.01,0.1, by = (0.1-0.01)/19)
+  
+  for (indx in loop_ind) {
+
+    params$phi_BA_base <- CTMC_phi_BA[indx]
+
+    results <- CTMC_Ebola(params, t_max)
+    
+     CTMC_out_phi_BA_A[indx] <- with(as.data.frame(results), {
+    max(results$infected_A)
+      })
+    
+     CTMC_out_phi_BA_B[indx] <- with(as.data.frame(results), {
+    max(results$infected_B)
+      })
+  }
+
+```
+
+################################################################################
+
+# Plotting results -- one year
+
+################################################################################
+
+```{r ODEs, echo=FALSE}
+
+
+par(mfrow = c(2,2), mai = c(0.8,0.9,0.4,0.2))
+
+
+
+plot(season_,out_season_A, col = "orangered", type = "l",
+       xlab = "Seasonality strength", ylab = "Epidemic peak", ylim = c(5, 70), xlim=c(0.1,1), 
+       cex.lab = 1.2, cex.axis = 1.5, lwd = 4.5, yaxt = 'n', panel.first = grid(), xaxt = 'n',
+       yaxt = 'n')
+axis(1, at = seq(0.1,1, by = 0.1), las=1)
+axis(2, at = seq(5,70, by = 15), las=1)
+
+box()
+
+lines(season_,out_season_B, type = "l", col = "red4", lwd = 4.5)
+
+lines(CTMC_season_,CTMC_out_season_A, type = "l", col = "orangered", lwd = 2)
+lines(CTMC_season_,CTMC_out_season_B, type = "l", col = "red4", lwd = 2)
+
+
+
+legend("right", c("Endemic patch", "Settlement patch"),
+       col = c("orangered", "red4"), lty = 1, bty = "n", cex = 1.1, lwd = 3)
+text(0.1,85, "A", xpd = NA, cex = 1.6)
+
+################################################################################
+exp2 <- expression("Transmission rate in patch A")
+plot(trans_,out_trans_A, col = "orangered", type = "l",
+       xlab = exp2, ylab = " ", ylim = c(5, 70), xlim=c(40,70), 
+       cex.lab = 1.2, cex.axis = 1.5, lwd = 4.5, yaxt = 'n', panel.first = grid(), xaxt = 'n',
+       yaxt = 'n')
+axis(1, at = seq(40,70, by = 10), las=1)
+axis(2, at = seq(5,70, by = 15), las=1)
+
+box()
+
+lines(trans_,out_trans_B, type = "l", col = "red4", lwd = 4.5)
+
+lines(CTMC_trans_,CTMC_out_trans_A, type = "l", col = "orangered", lwd = 2)
+lines(CTMC_trans_,CTMC_out_trans_B, type = "l", col = "red4", lwd = 2)
+
+
+text(40,85, "B", xpd = NA, cex = 1.6)
+
+################################################################################
+plot(phi_AB, out_phi_AB_A, col = "orangered", type = "l",
+       xlab = "Dispersal from patch A to B", ylab = "Epidemic peak", ylim = c(5, 100), xlim=c(0.1,1), 
+       cex.lab = 1.2, cex.axis = 1.5, lwd = 4.5, yaxt = 'n', panel.first = grid(), xaxt = 'n',
+       yaxt = 'n')
+axis(1, at = seq(0.1,1, by = 0.1), las=1)
+axis(2, at = seq(5,100, by = 15), las=1)
+
+box()
+
+lines(phi_AB, out_phi_AB_B, type = "l", col = "red4", lwd = 4.5)
+
+lines(CTMC_phi_AB,CTMC_out_phi_AB_A, type = "l", col = "orangered", lwd = 2)
+lines(CTMC_phi_AB,CTMC_out_phi_AB_B, type = "l", col = "red4", lwd = 2)
+
+
+text(0.1,120, "C", xpd = NA, cex = 1.6)
+
+
+################################################################################
+plot(phi_BA, out_phi_BA_A, col = "orangered", type = "l",
+       xlab = "Dispersal from patch B to A", ylab = " ", ylim = c(5, 70), xlim=c(0.01,0.1), 
+       cex.lab = 1.2, cex.axis = 1.5, lwd = 4.5, yaxt = 'n', panel.first = grid(), xaxt = 'n',
+       yaxt = 'n')
+axis(1, at = seq(0.01,0.1, by = (0.1-0.01)/9), las=1)
+axis(2, at = seq(5,70, by = 15), las=1) 
+
+box()
+
+lines(phi_BA, out_phi_BA_B, type = "l", col = "red4", lwd = 4.5)
+
+lines(CTMC_phi_BA,CTMC_out_phi_BA_A, type = "l", col = "orangered", lwd = 2)
+lines(CTMC_phi_BA,CTMC_out_phi_BA_B, type = "l", col = "red4", lwd = 2)
+
+
+text(0.01,85, "D", xpd = NA, cex = 1.6)
+
+
+```
+
+
+
+
+
